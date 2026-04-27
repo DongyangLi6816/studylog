@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -10,7 +10,7 @@ import FloatingTimer from './components/FloatingTimer';
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
@@ -20,7 +20,7 @@ export default function App() {
           </Route>
         </Routes>
         <FloatingTimer />
-      </BrowserRouter>
+      </HashRouter>
     </ThemeProvider>
   );
 }
