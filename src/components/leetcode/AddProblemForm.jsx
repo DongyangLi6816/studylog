@@ -31,6 +31,18 @@ export default function AddProblemForm({ onSubmit, editEntry, onCancelEdit, pref
     }
   }, [editEntry]);
 
+  // React to prefill arriving after mount (e.g. timer stopped while already on this page)
+  useEffect(() => {
+    if (prefill) {
+      setForm(f => ({
+        ...f,
+        problemName: prefill.problemName || '',
+        timeSpentMinutes: prefill.timeSpentMinutes || '',
+      }));
+      setOpen(true);
+    }
+  }, [prefill]);
+
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
   const handleSubmit = (e) => {

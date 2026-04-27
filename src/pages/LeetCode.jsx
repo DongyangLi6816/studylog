@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useLeetCode } from '../hooks/useLeetCode';
 import AddProblemForm from '../components/leetcode/AddProblemForm';
@@ -10,8 +10,14 @@ export default function LeetCode() {
   const [editEntry, setEditEntry] = useState(null);
   const location = useLocation();
 
-  // Prefill from timer stop — consumed once on mount via location state
-  const prefill = location.state?.prefill ?? null;
+  // Track prefill as state so it responds even when the page is already mounted
+  const [prefill, setPrefill] = useState(location.state?.prefill ?? null);
+
+  useEffect(() => {
+    if (location.state?.prefill) {
+      setPrefill(location.state.prefill);
+    }
+  }, [location.state]);
 
   const handleSubmit = (data) => {
     if (editEntry) {
