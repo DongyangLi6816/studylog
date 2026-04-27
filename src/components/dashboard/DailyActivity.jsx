@@ -81,12 +81,17 @@ function DayCard({ dateStr, items, defaultOpen }) {
                         <p className="text-xs text-slate-500 dark:text-slate-400">{item.sub}</p>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
                       {item.minutes > 0 && (
                         <p className="text-xs font-medium text-slate-600 dark:text-slate-300">{formatMinutes(item.minutes)}</p>
                       )}
                       {item.status && (
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{item.status}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">{item.status}</p>
+                      )}
+                      {item.fromTodo && (
+                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                          from todo
+                        </span>
                       )}
                     </div>
                   </div>
@@ -104,7 +109,6 @@ export default function DailyActivity({ leetcodeEntries, collegeData, todosData 
   const days = getLast7Days();
   const today = days[0];
 
-  // Collect items keyed by date (only the 7 days in view)
   const byDate = {};
   days.forEach(d => { byDate[d] = []; });
 
@@ -117,6 +121,7 @@ export default function DailyActivity({ leetcodeEntries, collegeData, todosData 
         sub: [e.problemNumber ? `#${e.problemNumber}` : null, e.difficulty].filter(Boolean).join(' · '),
         minutes: e.timeSpentMinutes || 0,
         status: e.status,
+        fromTodo: !!e.fromTodo,
       });
     }
   }
@@ -132,10 +137,14 @@ export default function DailyActivity({ leetcodeEntries, collegeData, todosData 
             sub: course.code,
             minutes: entry.timeSpentMinutes || 0,
             status: entry.type,
+            fromTodo: !!entry.fromTodo,
           });
 
   const allTodos = [...(todosData?.today || []), ...(todosData?.tomorrow || [])];
   for (const todo of allTodos) {
+    // Skip cross-logged todos — they already appear under their LC/College entry
+    if (todo.crossLogged) continue;
+
     const minutes = Math.floor((todo.timeSpentSeconds || 0) / 60);
     if (todo.completedAt) {
       const d = todo.completedAt.slice(0, 10);
@@ -147,10 +156,10 @@ export default function DailyActivity({ leetcodeEntries, collegeData, todosData 
           sub: todo.category,
           minutes,
           status: 'Completed',
+          fromTodo: false,
         });
       }
     } else if (minutes > 0) {
-      // Not yet completed but has time — show on today
       byDate[today].push({
         type: 'todo',
         id: `${todo.id}-inprogress`,
@@ -158,6 +167,7 @@ export default function DailyActivity({ leetcodeEntries, collegeData, todosData 
         sub: todo.category,
         minutes,
         status: 'In Progress',
+        fromTodo: false,
       });
     }
   }

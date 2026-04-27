@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTimer } from '../context/TimerContext';
 import { useTodos } from '../context/TodosContext';
-import { useCollege } from '../hooks/useCollege';
+import { useCollege } from '../context/CollegeContext';
 import { useLeetCodeLookup } from '../hooks/useLeetCodeLookup';
 import { DIFFICULTY_COLORS } from '../utils/leetcodeConstants';
 
@@ -223,13 +223,7 @@ export default function FloatingTimer() {
 
     if (result.linkedTodoId) {
       addTimeToTodo(result.linkedTodoId, result.elapsedMs);
-      // Offer to also log as LeetCode problem if the todo was categorised as LeetCode
-      const todo = [...data.today, ...data.tomorrow].find(t => t.id === result.linkedTodoId);
-      if (todo?.category === 'LeetCode') {
-        if (window.confirm(`Also log "${todo.text}" as a LeetCode problem?`)) {
-          navigate('/leetcode', { state: { prefill: { problemName: todo.text, timeSpentMinutes: result.elapsedMinutes } } });
-        }
-      }
+      // Cross-log prompt is handled by CrossLogOverlay when the user marks the todo complete
     } else if (result.category === 'leetcode') {
       navigate('/leetcode', { state: { prefill: { problemName: result.taskName, timeSpentMinutes: result.elapsedMinutes } } });
     } else if (result.semId && result.courseId) {

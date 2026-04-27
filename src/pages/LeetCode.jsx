@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useLeetCode } from '../hooks/useLeetCode';
+import { useLeetCode } from '../context/LeetCodeContext';
+import { useCelebration } from '../context/CelebrationContext';
 import AddProblemForm from '../components/leetcode/AddProblemForm';
 import ProblemList from '../components/leetcode/ProblemList';
 import LeetCodeStats from '../components/leetcode/LeetCodeStats';
 
 export default function LeetCode() {
   const { entries, addEntry, updateEntry, deleteEntry } = useLeetCode();
+  const { triggerCelebration } = useCelebration();
   const [editEntry, setEditEntry] = useState(null);
   const location = useLocation();
 
@@ -25,6 +27,7 @@ export default function LeetCode() {
       setEditEntry(null);
     } else {
       addEntry(data);
+      triggerCelebration(1);
     }
   };
 

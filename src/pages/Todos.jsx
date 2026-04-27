@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTodos } from '../context/TodosContext';
 import { useTimer } from '../context/TimerContext';
+import { useCrossLog } from '../context/CrossLogContext';
+import { useCelebration } from '../context/CelebrationContext';
 
 const CATEGORIES = ['General', 'LeetCode', 'College'];
 
@@ -168,6 +170,8 @@ export default function Todos() {
   const [newCategory, setNewCategory] = useState('General');
 
   const timer = useTimer();
+  const { promptCrossLog } = useCrossLog();
+  const { triggerCelebration } = useCelebration();
   const { data, addTodo, updateTodo, deleteTodo, toggleComplete, addTimeToTodo, moveToToday, moveAllToToday } = useTodos();
 
   const list   = activeTab;
@@ -213,6 +217,10 @@ export default function Todos() {
       addTimeToTodo(todo.id, result.elapsedMs);
     }
     toggleComplete(lst, todo.id);
+    if (!todo.completed) {
+      triggerCelebration(1);
+      promptCrossLog(todo, lst);
+    }
   };
 
   const handleEdit = (lst, id, text) => {

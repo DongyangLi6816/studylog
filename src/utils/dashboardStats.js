@@ -1,5 +1,5 @@
 // Build { date → { minutes, count } } from all data sources
-export function buildDayMap(leetcodeEntries, collegeData) {
+export function buildDayMap(leetcodeEntries, collegeData, todos = []) {
   const map = {};
 
   const add = (date, minutes) => {
@@ -14,6 +14,14 @@ export function buildDayMap(leetcodeEntries, collegeData) {
     for (const course of sem.courses || [])
       for (const entry of course.entries || [])
         add(entry.date, entry.timeSpentMinutes);
+
+  // Add todo time per day — skip cross-logged items (already counted via LC/College entries)
+  for (const todo of todos) {
+    if (todo.crossLogged) continue;
+    for (const session of todo.timeSessions || []) {
+      add(session.date, Math.floor(session.seconds / 60));
+    }
+  }
 
   return map;
 }

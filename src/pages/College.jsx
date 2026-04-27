@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useCollege } from '../hooks/useCollege';
+import { useCollege } from '../context/CollegeContext';
 import SemesterAccordion from '../components/college/SemesterAccordion';
 import SemesterForm from '../components/college/SemesterForm';
 

@@ -4,9 +4,22 @@ import { v4 as uuid } from 'uuid';
 const KEY = 'studylog_todos';
 const EMPTY = { today: [], tomorrow: [] };
 
+function migrateTodo(t) {
+  return {
+    crossLogged: false,
+    timeSessions: [],
+    ...t,
+  };
+}
+
 function load() {
-  try { return { ...EMPTY, ...JSON.parse(localStorage.getItem(KEY)) }; }
-  catch { return EMPTY; }
+  try {
+    const d = { ...EMPTY, ...JSON.parse(localStorage.getItem(KEY)) };
+    return {
+      today: (d.today || []).map(migrateTodo),
+      tomorrow: (d.tomorrow || []).map(migrateTodo),
+    };
+  } catch { return EMPTY; }
 }
 function persist(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
 
@@ -22,7 +35,8 @@ export function TodosProvider({ children }) {
   const addTodo = useCallback((list, text, category = 'General') => {
     const todo = {
       id: uuid(), text, category, completed: false,
-      timeSpentSeconds: 0, createdAt: new Date().toISOString(), completedAt: null,
+      timeSpentSeconds: 0, crossLogged: false, timeSessions: [],
+      createdAt: new Date().toISOString(), completedAt: null,
     };
     mutate(d => ({ ...d, [list]: [...d[list], todo] }));
     return todo.id;
@@ -50,9 +64,25 @@ export function TodosProvider({ children }) {
   const addTimeToTodo = useCallback((id, elapsedMs) => {
     const seconds = Math.floor(elapsedMs / 1000);
     if (seconds <= 0) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    mutate(d => {
+      const apply = (t) => {
+        if (t.id !== id) return t;
+        const sessions = t.timeSessions || [];
+        const existing = sessions.find(s => s.date === todayStr);
+        const newSessions = existing
+          ? sessions.map(s => s.date === todayStr ? { ...s, seconds: s.seconds + seconds } : s)
+          : [...sessions, { date: todayStr, seconds }];
+        return { ...t, timeSpentSeconds: t.timeSpentSeconds + seconds, timeSessions: newSessions };
+      };
+      return { today: d.today.map(apply), tomorrow: d.tomorrow.map(apply) };
+    });
+  }, [mutate]);
+
+  const markCrossLogged = useCallback((id) => {
     mutate(d => ({
-      today: d.today.map(t => t.id === id ? { ...t, timeSpentSeconds: t.timeSpentSeconds + seconds } : t),
-      tomorrow: d.tomorrow.map(t => t.id === id ? { ...t, timeSpentSeconds: t.timeSpentSeconds + seconds } : t),
+      today: d.today.map(t => t.id === id ? { ...t, crossLogged: true } : t),
+      tomorrow: d.tomorrow.map(t => t.id === id ? { ...t, crossLogged: true } : t),
     }));
   }, [mutate]);
 
@@ -73,7 +103,7 @@ export function TodosProvider({ children }) {
   return (
     <Ctx.Provider value={{
       data, addTodo, updateTodo, deleteTodo,
-      toggleComplete, addTimeToTodo,
+      toggleComplete, addTimeToTodo, markCrossLogged,
       moveToToday, moveAllToToday, bulkLoad,
     }}>
       {children}

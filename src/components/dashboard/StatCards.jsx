@@ -12,16 +12,20 @@ function Card({ label, value, sub, accent }) {
   );
 }
 
-export default function StatCards({ leetcodeEntries, collegeData, dayMap }) {
+export default function StatCards({ leetcodeEntries, todosData, dayMap, currentStreak }) {
   const solved = leetcodeEntries.filter(e => e.status === 'Solved').length;
-  const collegeEntries = (collegeData.semesters || [])
-    .flatMap(s => s.courses || [])
-    .flatMap(c => c.entries || []);
 
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
 
-  // Last 7 days
+  // Tasks today
+  const todayTodos = todosData?.today || [];
+  const todayDone  = todayTodos.filter(t => t.completed).length;
+  const todayTotal = todayTodos.length;
+  const tasksLabel = todayTotal > 0 ? `${todayDone}/${todayTotal}` : '—';
+  const tasksSub   = todayTotal > 0 ? `${todayTotal - todayDone} remaining` : 'No tasks yet';
+
+  // Last 7 days — dayMap already includes todos (no double-counting)
   const weekStart = new Date(today); weekStart.setDate(weekStart.getDate() - 6);
   const weekStartStr = weekStart.toISOString().slice(0, 10);
   let weekMinutes = 0;
@@ -29,37 +33,30 @@ export default function StatCards({ leetcodeEntries, collegeData, dayMap }) {
     if (date >= weekStartStr && date <= todayStr) weekMinutes += minutes;
   }
 
-  // Current calendar month
-  const monthStartStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
-  let monthMinutes = 0;
-  for (const [date, { minutes }] of Object.entries(dayMap)) {
-    if (date >= monthStartStr && date <= todayStr) monthMinutes += minutes;
-  }
-
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Card
-        label="Problems Solved"
-        value={solved}
-        sub={`${leetcodeEntries.length} logged total`}
+        label="Tasks Today"
+        value={tasksLabel}
+        sub={tasksSub}
         accent="text-indigo-600 dark:text-indigo-400"
       />
       <Card
-        label="College Entries"
-        value={collegeEntries.length}
-        sub={`${(collegeData.semesters || []).length} semesters`}
-        accent="text-purple-600 dark:text-purple-400"
+        label="LC Solved"
+        value={solved}
+        sub={`${leetcodeEntries.length} logged total`}
+        accent="text-orange-600 dark:text-orange-400"
       />
       <Card
-        label="This Week"
+        label="Hours This Week"
         value={formatHours(weekMinutes)}
-        sub="last 7 days"
+        sub="all sources, last 7 days"
         accent="text-emerald-600 dark:text-emerald-400"
       />
       <Card
-        label="This Month"
-        value={formatHours(monthMinutes)}
-        sub={today.toLocaleString('default', { month: 'long' })}
+        label="Current Streak"
+        value={`${currentStreak}d`}
+        sub={currentStreak === 1 ? '1 day in a row' : currentStreak > 1 ? `${currentStreak} days in a row` : 'Start your streak!'}
         accent="text-amber-600 dark:text-amber-400"
       />
     </div>
