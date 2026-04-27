@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { DIFFICULTIES, STATUSES, DIFFICULTY_COLORS } from '../../utils/leetcodeConstants';
 import { useLeetCodeLookup } from '../../hooks/useLeetCodeLookup';
 import TagSelector from './TagSelector';
+import { localDateString } from '../../utils/dateUtils';
 
 const EMPTY = {
   problemName: '',
@@ -12,7 +13,7 @@ const EMPTY = {
   timeSpentMinutes: '',
   notes: '',
   url: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: localDateString(),
 };
 
 const inputCls = `w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600

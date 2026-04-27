@@ -1,3 +1,5 @@
+import { localDateString } from './dateUtils';
+
 // Build { date → { minutes, count } } from all data sources
 export function buildDayMap(leetcodeEntries, collegeData, todos = []) {
   const map = {};
@@ -29,12 +31,12 @@ export function buildDayMap(leetcodeEntries, collegeData, todos = []) {
 function nextDay(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return localDateString(d);
 }
 
 export function computeStreaks(dayMap) {
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = localDateString(today);
   const hasToday = (dayMap[todayStr]?.count || 0) > 0;
 
   // Current streak — counts back from today (or yesterday if today is empty)
@@ -44,7 +46,7 @@ export function computeStreaks(dayMap) {
 
   const cur = new Date(start);
   while (true) {
-    const s = cur.toISOString().slice(0, 10);
+    const s = localDateString(cur);
     if ((dayMap[s]?.count || 0) > 0) { currentStreak++; cur.setDate(cur.getDate() - 1); }
     else break;
   }
@@ -66,7 +68,7 @@ export function minutesInRange(dayMap, startDate, endDate) {
   const d = new Date(startDate + 'T12:00:00');
   const end = new Date(endDate + 'T12:00:00');
   while (d <= end) {
-    total += dayMap[d.toISOString().slice(0, 10)]?.minutes || 0;
+    total += dayMap[localDateString(d)]?.minutes || 0;
     d.setDate(d.getDate() + 1);
   }
   return total;

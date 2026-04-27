@@ -1,4 +1,5 @@
 import { formatHours } from '../../utils/dashboardStats';
+import { getTodayString, getTodosForDate, localDateString } from '../../utils/dateUtils';
 
 function Card({ label, value, sub, accent }) {
   return (
@@ -15,19 +16,19 @@ function Card({ label, value, sub, accent }) {
 export default function StatCards({ leetcodeEntries, todosData, dayMap, currentStreak }) {
   const solved = leetcodeEntries.filter(e => e.status === 'Solved').length;
 
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = getTodayString();
 
-  // Tasks today
-  const todayTodos = todosData?.today || [];
+  // Tasks today — filter flat todos array by today's date
+  const todayTodos = getTodosForDate(todosData?.todos || [], todayStr);
   const todayDone  = todayTodos.filter(t => t.completed).length;
   const todayTotal = todayTodos.length;
   const tasksLabel = todayTotal > 0 ? `${todayDone}/${todayTotal}` : '—';
   const tasksSub   = todayTotal > 0 ? `${todayTotal - todayDone} remaining` : 'No tasks yet';
 
   // Last 7 days — dayMap already includes todos (no double-counting)
+  const today = new Date();
   const weekStart = new Date(today); weekStart.setDate(weekStart.getDate() - 6);
-  const weekStartStr = weekStart.toISOString().slice(0, 10);
+  const weekStartStr = localDateString(weekStart);
   let weekMinutes = 0;
   for (const [date, { minutes }] of Object.entries(dayMap)) {
     if (date >= weekStartStr && date <= todayStr) weekMinutes += minutes;

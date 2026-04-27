@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { ENTRY_TYPES } from '../../utils/collegeConstants';
+import { localDateString } from '../../utils/dateUtils';
 
 const EMPTY = {
   name: '', type: 'Assignment', grade: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: localDateString(),
   timeSpentMinutes: '', notes: '',
 };
 

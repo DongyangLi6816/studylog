@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useCollege } from '../context/CollegeContext';
 import { useCelebration } from '../context/CelebrationContext';
 import SemesterAccordion from '../components/college/SemesterAccordion';
+import { localDateString } from '../utils/dateUtils';
 import SemesterForm from '../components/college/SemesterForm';
 
 function TimerPrefillBanner({ prefill, collegeData, onSave, onDismiss }) {
@@ -62,7 +63,7 @@ export default function College() {
       name: prefill.entryName,
       type: 'Assignment',
       grade: '',
-      date: new Date().toISOString().slice(0, 10),
+      date: localDateString(),
       timeSpentMinutes: prefill.timeSpentMinutes,
       notes: '',
     });

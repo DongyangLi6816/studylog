@@ -3,6 +3,7 @@ import { useTodos } from '../context/TodosContext';
 import { useTimer } from '../context/TimerContext';
 import { useCrossLog } from '../context/CrossLogContext';
 import { useCelebration } from '../context/CelebrationContext';
+import { getTodayString, getTomorrowString, isOverdue, getTodosForDate } from '../utils/dateUtils';
 
 const CATEGORIES = ['General', 'LeetCode', 'College'];
 
@@ -21,7 +22,13 @@ function formatTime(seconds) {
   return rem ? `${h}h ${rem}m` : `${h}h`;
 }
 
-function TodoItem({ todo, list, timer, onStart, onPause, onFinish, onDelete, onToggleComplete, onEdit, onMoveToToday, showMoveToToday }) {
+function formatDate(dateStr) {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+  });
+}
+
+function TodoItem({ todo, timer, onStart, onPause, onFinish, onDelete, onToggleComplete, onEdit, onMoveToToday, showMoveToToday }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
   const inputRef = useRef(null);
@@ -30,7 +37,6 @@ function TodoItem({ todo, list, timer, onStart, onPause, onFinish, onDelete, onT
   const isRunning   = isTimingThis && timer.state.status === 'running';
   const isPaused    = isTimingThis && timer.state.status === 'paused';
 
-  // Live accumulated seconds: stored + current session
   const liveExtraSeconds = isTimingThis ? Math.floor(timer.elapsedMs / 1000) : 0;
   const totalSeconds = todo.timeSpentSeconds + liveExtraSeconds;
 
@@ -40,7 +46,7 @@ function TodoItem({ todo, list, timer, onStart, onPause, onFinish, onDelete, onT
 
   const handleEditSave = () => {
     const trimmed = editText.trim();
-    if (trimmed && trimmed !== todo.text) onEdit(list, todo.id, trimmed);
+    if (trimmed && trimmed !== todo.text) onEdit(todo.id, trimmed);
     setEditing(false);
   };
 
@@ -57,7 +63,7 @@ function TodoItem({ todo, list, timer, onStart, onPause, onFinish, onDelete, onT
       <input
         type="checkbox"
         checked={todo.completed}
-        onChange={() => onToggleComplete(list, todo)}
+        onChange={() => onToggleComplete(todo)}
         className="mt-1 shrink-0 w-4 h-4 rounded accent-indigo-600 cursor-pointer"
       />
 
@@ -151,7 +157,7 @@ function TodoItem({ todo, list, timer, onStart, onPause, onFinish, onDelete, onT
         )}
 
         <button
-          onClick={() => onDelete(list, todo.id)}
+          onClick={() => onDelete(todo.id)}
           title="Delete"
           className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
         >
@@ -168,23 +174,53 @@ export default function Todos() {
   const [activeTab, setActiveTab] = useState('today');
   const [newText, setNewText] = useState('');
   const [newCategory, setNewCategory] = useState('General');
+  const [showPastTasks, setShowPastTasks] = useState(false);
+
+  // Track current date so the view updates at midnight without a page refresh
+  const [currentDate, setCurrentDate] = useState(getTodayString);
+  const lastDateRef = useRef(currentDate);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const today = getTodayString();
+      if (today !== lastDateRef.current) {
+        lastDateRef.current = today;
+        setCurrentDate(today);
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const todayStr    = currentDate;
+  const tomorrowStr = getTomorrowString();
 
   const timer = useTimer();
   const { promptCrossLog } = useCrossLog();
   const { triggerCelebration } = useCelebration();
-  const { data, addTodo, updateTodo, deleteTodo, toggleComplete, addTimeToTodo, moveToToday, moveAllToToday } = useTodos();
+  const { data, addTodo, updateTodo, deleteTodo, toggleComplete, addTimeToTodo, moveToToday, moveAllToToday, moveOverdueToToday } = useTodos();
 
-  const list   = activeTab;
-  const todos  = data[list] || [];
+  const allTodos     = data.todos || [];
+  const todayTodos   = getTodosForDate(allTodos, todayStr);
+  const tomorrowTodos = getTodosForDate(allTodos, tomorrowStr);
+
+  // Overdue: incomplete tasks from dates strictly before today
+  const overdueTodos = allTodos.filter(t => isOverdue(t.scheduledDate, todayStr) && !t.completed);
+  const overdueByDate = {};
+  for (const t of overdueTodos) {
+    if (!overdueByDate[t.scheduledDate]) overdueByDate[t.scheduledDate] = [];
+    overdueByDate[t.scheduledDate].push(t);
+  }
+  const overdueDates = Object.keys(overdueByDate).sort().reverse();
+
+  const todos     = activeTab === 'today' ? todayTodos : tomorrowTodos;
   const active    = todos.filter(t => !t.completed);
   const completed = todos.filter(t => t.completed);
 
-  const todayCount    = (data.today    || []).filter(t => !t.completed).length;
-  const tomorrowCount = (data.tomorrow || []).filter(t => !t.completed).length;
+  const todayCount    = todayTodos.filter(t => !t.completed).length;
+  const tomorrowCount = tomorrowTodos.filter(t => !t.completed).length;
 
   const handleAdd = () => {
     if (!newText.trim()) return;
-    addTodo(list, newText.trim(), newCategory);
+    addTodo(activeTab === 'today' ? todayStr : tomorrowStr, newText.trim(), newCategory);
     setNewText('');
   };
 
@@ -206,35 +242,34 @@ export default function Todos() {
     addTimeToTodo(todo.id, result.elapsedMs);
   };
 
-  const handleDelete = (lst, id) => {
+  const handleDelete = (id) => {
     if (timer.isActive && timer.state.linkedTodoId === id) timer.reset();
-    deleteTodo(lst, id);
+    deleteTodo(id);
   };
 
-  const handleToggleComplete = (lst, todo) => {
+  const handleToggleComplete = (todo) => {
     if (timer.isActive && timer.state.linkedTodoId === todo.id && !todo.completed) {
       const result = timer.stop();
       addTimeToTodo(todo.id, result.elapsedMs);
     }
-    toggleComplete(lst, todo.id);
+    toggleComplete(todo.id);
     if (!todo.completed) {
       triggerCelebration(1);
-      promptCrossLog(todo, lst);
+      promptCrossLog(todo, activeTab);
     }
   };
 
-  const handleEdit = (lst, id, text) => {
-    updateTodo(lst, id, { text });
+  const handleEdit = (id, text) => {
+    updateTodo(id, { text });
     if (timer.state.linkedTodoId === id) timer.update({ taskName: text });
   };
 
-  const renderList = (items, lst, showMoveToToday = false) => (
+  const renderList = (items, showMoveToToday = false) => (
     <div className="space-y-2">
       {items.map(todo => (
         <TodoItem
           key={todo.id}
           todo={todo}
-          list={lst}
           timer={timer}
           onStart={handleStart}
           onPause={handlePause}
@@ -285,8 +320,50 @@ export default function Todos() {
         ))}
       </div>
 
+      {/* Overdue banner — only on Today tab */}
+      {activeTab === 'today' && overdueTodos.length > 0 && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-amber-500 text-base mt-0.5">⚠</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                You have {overdueTodos.length} unfinished task{overdueTodos.length !== 1 ? 's' : ''} from previous days.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <button
+                  onClick={moveOverdueToToday}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-800/50 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-700/50 transition-colors"
+                >
+                  Move all to Today
+                </button>
+                <button
+                  onClick={() => setShowPastTasks(p => !p)}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/20 transition-colors"
+                >
+                  {showPastTasks ? 'Hide past tasks' : 'View past tasks'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Past tasks collapsible */}
+          {showPastTasks && (
+            <div className="mt-4 space-y-4">
+              {overdueDates.map(date => (
+                <div key={date}>
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2">
+                    {formatDate(date)}
+                  </p>
+                  {renderList(overdueByDate[date], true)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tomorrow bulk action */}
-      {activeTab === 'tomorrow' && data.tomorrow.length > 0 && (
+      {activeTab === 'tomorrow' && tomorrowTodos.filter(t => !t.completed).length > 0 && (
         <div className="flex justify-end">
           <button
             onClick={moveAllToToday}
@@ -335,14 +412,14 @@ export default function Todos() {
         </div>
       ) : (
         <div className="space-y-5">
-          {active.length > 0 && renderList(active, list, activeTab === 'tomorrow')}
+          {active.length > 0 && renderList(active, activeTab === 'tomorrow')}
 
           {completed.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2 px-1">
                 Completed ({completed.length})
               </p>
-              {renderList(completed, list, false)}
+              {renderList(completed, false)}
             </div>
           )}
         </div>

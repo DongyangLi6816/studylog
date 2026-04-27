@@ -14,10 +14,7 @@ export default function Dashboard() {
   const { data: collegeData } = useCollege();
   const { data: todosData } = useTodos();
 
-  const allTodos = useMemo(
-    () => [...(todosData.today || []), ...(todosData.tomorrow || [])],
-    [todosData],
-  );
+  const allTodos = useMemo(() => todosData.todos || [], [todosData]);
 
   const dayMap = useMemo(
     () => buildDayMap(leetcodeEntries, collegeData, allTodos),
@@ -26,7 +23,7 @@ export default function Dashboard() {
 
   const { currentStreak, longestStreak } = useMemo(() => computeStreaks(dayMap), [dayMap]);
 
-  const hasTodoActivity = allTodos.some(t => (t.timeSessions && t.timeSessions.length > 0) || t.completed);
+  const hasTodoActivity = allTodos.some(t => t.timeSessions?.length > 0 || t.completed);
   const isEmpty = leetcodeEntries.length === 0 && (collegeData.semesters || []).length === 0 && !hasTodoActivity;
 
   return (

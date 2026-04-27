@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTodos } from '../../context/TodosContext';
 import { useTimer } from '../../context/TimerContext';
 import { useCrossLog } from '../../context/CrossLogContext';
+import { getTodayString, getTodosForDate } from '../../utils/dateUtils';
 
 const CATEGORY_COLORS = {
   LeetCode: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
@@ -98,17 +99,26 @@ export default function TodaysFocus({ dayMap }) {
   const [newText, setNewText] = useState('');
   const [newCategory, setNewCategory] = useState('General');
 
-  const todayTodos = data.today || [];
+  // Midnight rollover: keep todayStr reactive
+  const [todayStr, setTodayStr] = useState(getTodayString);
+  const lastDateRef = useRef(todayStr);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = getTodayString();
+      if (now !== lastDateRef.current) { lastDateRef.current = now; setTodayStr(now); }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const todayTodos = getTodosForDate(data.todos || [], todayStr);
   const active    = todayTodos.filter(t => !t.completed);
   const completed = todayTodos.filter(t => t.completed);
   const total     = todayTodos.length;
   const doneCount = completed.length;
   const pct       = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
-  const todayStr = new Date().toISOString().slice(0, 10);
   const todayMinutes = dayMap?.[todayStr]?.minutes || 0;
 
-  // Show incomplete first, then completed; cap at 6 visible
   const sorted  = [...active, ...completed];
   const visible = sorted.slice(0, 6);
   const hasMore = sorted.length > 6;
@@ -127,13 +137,13 @@ export default function TodaysFocus({ dayMap }) {
       const result = timer.stop();
       addTimeToTodo(todo.id, result.elapsedMs);
     }
-    toggleComplete('today', todo.id);
+    toggleComplete(todo.id);
     if (!todo.completed) promptCrossLog(todo, 'today');
   };
 
   const handleAdd = () => {
     if (!newText.trim()) return;
-    addTodo('today', newText.trim(), newCategory);
+    addTodo(todayStr, newText.trim(), newCategory);
     setNewText('');
   };
 

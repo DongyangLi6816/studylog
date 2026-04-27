@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatMinutes } from '../../utils/dashboardStats';
+import { localDateString } from '../../utils/dateUtils';
 
 // Color levels: index 0 = no activity, 5 = most active
 const CELL_COLORS = [
@@ -50,7 +51,7 @@ function buildGrid(dayMap) {
 
     for (let row = 0; row < 7; row++) {
       const d = new Date(sunday); d.setDate(d.getDate() + row);
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = localDateString(d);
       const isFuture = d > today;
       const { minutes = 0, count = 0 } = dayMap[dateStr] || {};
       week.push({ dateStr, minutes, count, isFuture, level: isFuture ? -1 : getLevel(minutes) });

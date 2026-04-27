@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
+import { localDateString } from '../utils/dateUtils';
 
 const STORAGE_KEY = 'studylog_college';
 const EMPTY = { semesters: [] };
@@ -61,7 +62,7 @@ export function useCollege() {
     const entry = {
       id: uuid(), createdAt: new Date().toISOString(),
       name: '', type: 'Assignment', grade: '',
-      date: new Date().toISOString().slice(0, 10),
+      date: localDateString(),
       timeSpentMinutes: 0, notes: '',
       ...entryData,
     };

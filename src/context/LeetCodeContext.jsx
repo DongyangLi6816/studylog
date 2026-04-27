@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
+import { localDateString } from '../utils/dateUtils';
 
 const STORAGE_KEY = 'studylog_leetcode';
 
@@ -26,7 +27,7 @@ export function LeetCodeProvider({ children }) {
       timeSpentMinutes: 0,
       notes: '',
       url: '',
-      date: new Date().toISOString().slice(0, 10),
+      date: localDateString(),
       ...data,
     };
     setEntries(prev => {

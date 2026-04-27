@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { localDateString } from '../../utils/dateUtils';
 
 function getLast7Days() {
   const days = [];
@@ -6,7 +7,7 @@ function getLast7Days() {
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
+    days.push(localDateString(d));
   }
   return days;
 }
@@ -140,33 +141,40 @@ export default function DailyActivity({ leetcodeEntries, collegeData, todosData 
             fromTodo: !!entry.fromTodo,
           });
 
-  const allTodos = [...(todosData?.today || []), ...(todosData?.tomorrow || [])];
+  const allTodos = todosData?.todos || [];
   for (const todo of allTodos) {
     // Skip cross-logged todos — they already appear under their LC/College entry
     if (todo.crossLogged) continue;
 
-    const minutes = Math.floor((todo.timeSpentSeconds || 0) / 60);
-    if (todo.completedAt) {
-      const d = todo.completedAt.slice(0, 10);
-      if (byDate[d] !== undefined) {
-        byDate[d].push({
-          type: 'todo',
-          id: todo.id,
-          name: todo.text,
-          sub: todo.category,
-          minutes,
-          status: 'Completed',
-          fromTodo: false,
-        });
-      }
-    } else if (minutes > 0) {
-      byDate[today].push({
+    const completedDate = todo.completedAt ? todo.completedAt.slice(0, 10) : null;
+    const sessionDates = new Set();
+
+    // Add an entry for each day where time was logged
+    for (const session of (todo.timeSessions || [])) {
+      if (!Object.prototype.hasOwnProperty.call(byDate, session.date)) continue;
+      if (session.seconds <= 0) continue;
+      sessionDates.add(session.date);
+      const isCompletedOnThisDay = todo.completed && completedDate === session.date;
+      byDate[session.date].push({
         type: 'todo',
-        id: `${todo.id}-inprogress`,
+        id: `${todo.id}-${session.date}`,
         name: todo.text,
         sub: todo.category,
-        minutes,
-        status: 'In Progress',
+        minutes: Math.floor(session.seconds / 60),
+        status: isCompletedOnThisDay ? 'Completed' : 'In Progress',
+        fromTodo: false,
+      });
+    }
+
+    // If completed on a day with no time session recorded, still show completion
+    if (completedDate && Object.prototype.hasOwnProperty.call(byDate, completedDate) && !sessionDates.has(completedDate)) {
+      byDate[completedDate].push({
+        type: 'todo',
+        id: todo.id,
+        name: todo.text,
+        sub: todo.category,
+        minutes: Math.floor((todo.timeSpentSeconds || 0) / 60),
+        status: 'Completed',
         fromTodo: false,
       });
     }
