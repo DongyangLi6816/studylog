@@ -3,6 +3,7 @@ import { useTheme } from '../context/ThemeContext';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: '⊞', end: true },
+  { to: '/todos', label: 'Todos', icon: '✓' },
   { to: '/leetcode', label: 'LeetCode', icon: '⌨' },
   { to: '/college', label: 'College', icon: '🎓' },
   { to: '/settings', label: 'Settings', icon: '⚙' },

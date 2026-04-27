@@ -1,18 +1,17 @@
 import { useMemo } from 'react';
 import { useLeetCode } from '../hooks/useLeetCode';
 import { useCollege } from '../hooks/useCollege';
-import {
-  buildDayMap, computeStreaks, getRecentActivity, computeBadges,
-} from '../utils/dashboardStats';
+import { useTodos } from '../context/TodosContext';
+import { buildDayMap, computeStreaks } from '../utils/dashboardStats';
 import Heatmap from '../components/dashboard/Heatmap';
 import StreakCounter from '../components/dashboard/StreakCounter';
 import StatCards from '../components/dashboard/StatCards';
-import Badges from '../components/dashboard/Badges';
-import ActivityFeed from '../components/dashboard/ActivityFeed';
+import DailyActivity from '../components/dashboard/DailyActivity';
 
 export default function Dashboard() {
   const { entries: leetcodeEntries } = useLeetCode();
   const { data: collegeData } = useCollege();
+  const { data: todosData } = useTodos();
 
   const dayMap = useMemo(
     () => buildDayMap(leetcodeEntries, collegeData),
@@ -20,8 +19,6 @@ export default function Dashboard() {
   );
 
   const { currentStreak, longestStreak } = useMemo(() => computeStreaks(dayMap), [dayMap]);
-  const recentActivity = useMemo(() => getRecentActivity(leetcodeEntries, collegeData), [leetcodeEntries, collegeData]);
-  const badges = useMemo(() => computeBadges(leetcodeEntries, collegeData, currentStreak, longestStreak), [leetcodeEntries, collegeData, currentStreak, longestStreak]);
 
   const isEmpty = leetcodeEntries.length === 0 && (collegeData.semesters || []).length === 0;
 
@@ -44,8 +41,7 @@ export default function Dashboard() {
           <StatCards leetcodeEntries={leetcodeEntries} collegeData={collegeData} dayMap={dayMap} />
           <Heatmap dayMap={dayMap} />
           <StreakCounter currentStreak={currentStreak} longestStreak={longestStreak} />
-          <Badges badges={badges} />
-          <ActivityFeed items={recentActivity} />
+          <DailyActivity leetcodeEntries={leetcodeEntries} collegeData={collegeData} todosData={todosData} />
         </>
       )}
     </div>

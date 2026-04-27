@@ -64,58 +64,6 @@ export function minutesInRange(dayMap, startDate, endDate) {
   return total;
 }
 
-export function getRecentActivity(leetcodeEntries, collegeData, n = 10) {
-  const items = [];
-
-  for (const e of leetcodeEntries) {
-    items.push({
-      type: 'leetcode', id: e.id,
-      title: e.problemName,
-      sub: [e.problemNumber ? `#${e.problemNumber}` : null, e.difficulty, e.status].filter(Boolean).join(' · '),
-      tags: e.topics.slice(0, 2),
-      minutes: e.timeSpentMinutes || 0,
-      date: e.date,
-      sortKey: e.createdAt || e.date,
-    });
-  }
-
-  for (const sem of collegeData.semesters || [])
-    for (const course of sem.courses || [])
-      for (const entry of course.entries || [])
-        items.push({
-          type: 'college', id: entry.id,
-          title: entry.name,
-          sub: [course.code, entry.type, entry.grade].filter(Boolean).join(' · '),
-          tags: [],
-          minutes: entry.timeSpentMinutes || 0,
-          date: entry.date,
-          sortKey: entry.createdAt || entry.date,
-        });
-
-  return items.sort((a, b) => b.sortKey.localeCompare(a.sortKey)).slice(0, n);
-}
-
-export function computeBadges(leetcodeEntries, collegeData, currentStreak, longestStreak) {
-  const solved = leetcodeEntries.filter(e => e.status === 'Solved').length;
-  const courses = (collegeData.semesters || []).flatMap(s => s.courses || []);
-  const allEntries = courses.flatMap(c => c.entries || []);
-  const totalMinutes =
-    leetcodeEntries.reduce((s, e) => s + (e.timeSpentMinutes || 0), 0) +
-    allEntries.reduce((s, e) => s + (e.timeSpentMinutes || 0), 0);
-  const best = Math.max(currentStreak, longestStreak);
-
-  return {
-    streak7:    best >= 7,
-    streak30:   best >= 30,
-    streak100:  best >= 100,
-    problems50:  solved >= 50,
-    problems100: solved >= 100,
-    problems250: solved >= 250,
-    courses10:  courses.length >= 10,
-    hours100:   totalMinutes / 60 >= 100,
-  };
-}
-
 export function formatMinutes(min) {
   if (!min) return '—';
   if (min < 60) return `${min}m`;

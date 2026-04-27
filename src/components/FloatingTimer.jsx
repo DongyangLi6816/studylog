@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTimer } from '../hooks/useTimer';
+import { useTimer } from '../context/TimerContext';
+import { useTodos } from '../context/TodosContext';
 import { useCollege } from '../hooks/useCollege';
 
 const inputCls = `w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600
@@ -10,7 +11,7 @@ const inputCls = `w-full px-3 py-2 rounded-lg border border-slate-300 dark:borde
 const labelCls = 'block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide';
 
 function IdleForm({ timer, collegeData }) {
-  const [category, setCategory] = useState(timer.state.category);
+  const [category, setCategory] = useState(timer.state.category === 'todo' ? 'leetcode' : timer.state.category);
   const [taskName, setTaskName] = useState(timer.state.taskName);
   const [semId, setSemId] = useState(timer.state.semId || '');
   const [courseId, setCourseId] = useState(timer.state.courseId || '');
@@ -20,7 +21,7 @@ function IdleForm({ timer, collegeData }) {
 
   const handleStart = () => {
     if (!taskName.trim()) return;
-    timer.start({ category, taskName: taskName.trim(), semId: semId || null, courseId: courseId || null });
+    timer.start({ category, taskName: taskName.trim(), semId: semId || null, courseId: courseId || null, linkedTodoId: null });
   };
 
   return (
@@ -82,6 +83,7 @@ function IdleForm({ timer, collegeData }) {
 
 function ActiveDisplay({ timer, onStop }) {
   const { state, display } = timer;
+  const isLinkedToTodo = !!state.linkedTodoId;
   return (
     <div className="space-y-3">
       <div className="text-center">
@@ -91,6 +93,7 @@ function ActiveDisplay({ timer, onStop }) {
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">{state.taskName}</p>
         <p className="text-[10px] text-slate-400 dark:text-slate-500 capitalize">
           {state.status === 'running' ? 'Running…' : 'Paused'}
+          {isLinkedToTodo && ' · Linked to Todo'}
         </p>
       </div>
       <div className="flex gap-2">
@@ -98,7 +101,9 @@ function ActiveDisplay({ timer, onStop }) {
           ? <button onClick={timer.pause} className="flex-1 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Pause</button>
           : <button onClick={timer.resume} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors">Resume</button>
         }
-        <button onClick={onStop} className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Stop</button>
+        <button onClick={onStop} className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">
+          {isLinkedToTodo ? 'Finish' : 'Stop'}
+        </button>
       </div>
       <button onClick={timer.reset} className="w-full text-xs text-slate-400 hover:text-red-400 transition-colors py-1">
         Discard
@@ -110,13 +115,16 @@ function ActiveDisplay({ timer, onStop }) {
 export default function FloatingTimer() {
   const [open, setOpen] = useState(false);
   const timer = useTimer();
+  const { addTimeToTodo } = useTodos();
   const { data: collegeData } = useCollege();
   const navigate = useNavigate();
 
   const handleStop = () => {
     const result = timer.stop();
     setOpen(false);
-    if (result.category === 'leetcode') {
+    if (result.linkedTodoId) {
+      addTimeToTodo(result.linkedTodoId, result.elapsedMs);
+    } else if (result.category === 'leetcode') {
       navigate('/leetcode', { state: { prefill: { problemName: result.taskName, timeSpentMinutes: result.elapsedMinutes } } });
     } else if (result.semId && result.courseId) {
       navigate('/college', { state: { prefill: { semId: result.semId, courseId: result.courseId, entryName: result.taskName, timeSpentMinutes: result.elapsedMinutes } } });

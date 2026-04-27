@@ -5,10 +5,11 @@ const IDLE = {
   status: 'idle',       // 'idle' | 'running' | 'paused'
   startedAt: null,      // Date.now() of when the current run began
   elapsedMs: 0,         // accumulated ms before current run
-  category: 'leetcode', // 'leetcode' | 'college'
+  category: 'leetcode', // 'leetcode' | 'college' | 'todo'
   taskName: '',
   semId: null,
   courseId: null,
+  linkedTodoId: null,   // uuid of a linked todo item, or null
 };
 
 function load() {
@@ -65,6 +66,7 @@ export function useTimer() {
       taskName: state.taskName,
       semId: state.semId,
       courseId: state.courseId,
+      linkedTodoId: state.linkedTodoId,
       elapsedMs,
       elapsedMinutes,
     };
