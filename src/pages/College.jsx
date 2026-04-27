@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useCollege } from '../context/CollegeContext';
+import { useCelebration } from '../context/CelebrationContext';
 import SemesterAccordion from '../components/college/SemesterAccordion';
 import SemesterForm from '../components/college/SemesterForm';
 
@@ -40,6 +41,7 @@ function TimerPrefillBanner({ prefill, collegeData, onSave, onDismiss }) {
 export default function College() {
   const college = useCollege();
   const { data, addSemester } = college;
+  const { triggerCelebration } = useCelebration();
   const [addingSemester, setAddingSemester] = useState(false);
   const location = useLocation();
   const [prefill, setPrefill] = useState(location.state?.prefill ?? null);
@@ -50,7 +52,7 @@ export default function College() {
     addCourse:      college.addCourse,
     updateCourse:   college.updateCourse,
     deleteCourse:   college.deleteCourse,
-    addEntry:       college.addEntry,
+    addEntry:       (semId, courseId, data) => { college.addEntry(semId, courseId, data); triggerCelebration(1); },
     updateEntry:    college.updateEntry,
     deleteEntry:    college.deleteEntry,
   };
@@ -65,6 +67,7 @@ export default function College() {
       notes: '',
     });
     setPrefill(null);
+    triggerCelebration(1);
   };
 
   return (
