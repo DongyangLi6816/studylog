@@ -6,7 +6,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-200">
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       {/* Main content area — offset by sidebar width on large screens */}

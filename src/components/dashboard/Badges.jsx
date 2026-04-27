@@ -11,10 +11,10 @@ const BADGE_DEFS = [
 
 function Badge({ icon, label, desc, earned }) {
   return (
-    <div className={`flex flex-col items-center text-center p-3 rounded-xl border transition-all ${
+    <div className={`flex flex-col items-center text-center p-3 rounded-xl border transition-all duration-200 ${
       earned
-        ? 'border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 shadow-sm shadow-indigo-100 dark:shadow-indigo-900'
-        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 opacity-40 grayscale'
+        ? 'border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 shadow-sm shadow-indigo-100 dark:shadow-indigo-900 hover:scale-105 hover:shadow-md cursor-default'
+        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 opacity-40 grayscale cursor-default'
     }`}>
       <span className="text-2xl mb-1">{icon}</span>
       <p className={`text-xs font-semibold leading-tight ${earned ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>

@@ -15,7 +15,7 @@ function MiniBar({ label, count, max, colorCls }) {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
     <div className="flex items-center gap-2">
-      <span className={`text-xs font-medium w-16 shrink-0 ${colorCls}`}>{label}</span>
+      <span className={`text-xs font-medium w-28 shrink-0 truncate ${colorCls}`} title={label}>{label}</span>
       <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
         <div className="h-full bg-current rounded-full transition-all" style={{ width: `${pct}%` }} />
       </div>

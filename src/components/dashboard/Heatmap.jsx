@@ -112,8 +112,10 @@ export default function Heatmap({ dayMap }) {
                     key={row}
                     onMouseEnter={e => handleEnter(e, cell)}
                     onMouseLeave={() => setTooltip(null)}
-                    className={`rounded-sm cursor-default transition-opacity ${
-                      cell.isFuture ? 'opacity-0' : CELL_COLORS[cell.level]
+                    className={`rounded-sm transition-transform duration-75 ${
+                      cell.isFuture
+                        ? 'opacity-0 cursor-default'
+                        : `${CELL_COLORS[cell.level]} ${cell.count > 0 ? 'cursor-pointer hover:scale-125 hover:z-10 hover:shadow-sm' : 'cursor-default'}`
                     }`}
                     style={{ width: CELL, height: CELL }}
                   />

@@ -127,7 +127,7 @@ export default function FloatingTimer() {
     <>
       {/* Expanded panel */}
       {open && (
-        <div className="fixed bottom-20 right-6 z-40 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4">
+        <div className="fixed bottom-20 right-4 sm:right-6 z-40 w-[calc(100vw-2rem)] sm:w-72 max-w-sm bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-slate-900 dark:text-white">Study Timer</span>
             <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none">×</button>
@@ -142,7 +142,7 @@ export default function FloatingTimer() {
       {/* FAB */}
       <button
         onClick={() => setOpen(o => !o)}
-        className={`fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all
+        className={`fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all
           ${timer.isActive
             ? 'bg-indigo-600 hover:bg-indigo-700'
             : 'bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600'

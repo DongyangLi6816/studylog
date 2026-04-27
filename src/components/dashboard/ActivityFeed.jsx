@@ -4,7 +4,7 @@ import { DIFFICULTY_COLORS } from '../../utils/leetcodeConstants';
 function ActivityItem({ item }) {
   const isLC = item.type === 'leetcode';
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-slate-100 dark:border-slate-700 last:border-0">
+    <div className="flex items-start gap-3 py-3 border-b border-slate-100 dark:border-slate-700 last:border-0 rounded-lg px-2 -mx-2 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors duration-100 cursor-default">
       <span className="text-lg shrink-0 mt-0.5">{isLC ? '⌨️' : '🎓'}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{item.title}</p>

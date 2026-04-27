@@ -6,11 +6,45 @@
   * {
     box-sizing: border-box;
   }
+
   body {
     margin: 0;
     font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Eliminate 300ms tap delay on mobile */
+  a, button, [role='button'], input, select, textarea, label {
+    touch-action: manipulation;
+  }
+
+  /* Smooth theme transitions for background and text */
+  @media (prefers-reduced-motion: no-preference) {
+    *,
+    *::before,
+    *::after {
+      transition-property: background-color, border-color, color;
+      transition-duration: 150ms;
+      transition-timing-function: ease;
+    }
+    /* Don't let the global rule slow down intentional transform/opacity animations */
+    .transition-transform,
+    .transition-opacity,
+    .transition-all,
+    .transition-shadow,
+    [class*='animate-'] {
+      transition-property: revert;
+    }
+  }
+
+  /* Prevent iOS Safari from zooming in on focused inputs */
+  @media screen and (-webkit-min-device-pixel-ratio: 0) and (max-width: 640px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 }
 
@@ -20,8 +54,13 @@
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 4px;
+    height: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-600;
     border-radius: 2px;
   }
 }

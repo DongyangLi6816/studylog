@@ -2,7 +2,9 @@ import { formatHours } from '../../utils/dashboardStats';
 
 function Card({ label, value, sub, accent }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5
+      hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md dark:hover:shadow-slate-900/40
+      transition-shadow duration-200 cursor-default">
       <p className={`text-3xl font-bold ${accent} leading-none mb-1`}>{value}</p>
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</p>
       {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>}
