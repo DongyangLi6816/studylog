@@ -42,7 +42,7 @@ export default function LeetCode() {
       {prefill && !editEntry && (
         <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-sm text-indigo-700 dark:text-indigo-300">
           <span>⏱️</span>
-          <span>Timer stopped — form pre-filled with <strong>{prefill.problemName}</strong> ({prefill.timeSpentMinutes}m). Fill in the details and save.</span>
+          <span>Timer stopped ({prefill.timeSpentMinutes}m) — enter the problem number or search by name below to log it.</span>
         </div>
       )}
 

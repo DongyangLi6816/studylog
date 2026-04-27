@@ -115,15 +115,23 @@ function ActiveDisplay({ timer, onStop }) {
 export default function FloatingTimer() {
   const [open, setOpen] = useState(false);
   const timer = useTimer();
-  const { addTimeToTodo } = useTodos();
+  const { data, addTimeToTodo } = useTodos();
   const { data: collegeData } = useCollege();
   const navigate = useNavigate();
 
   const handleStop = () => {
     const result = timer.stop();
     setOpen(false);
+
     if (result.linkedTodoId) {
       addTimeToTodo(result.linkedTodoId, result.elapsedMs);
+      // Offer to also log as LeetCode problem if the todo was categorised as LeetCode
+      const todo = [...data.today, ...data.tomorrow].find(t => t.id === result.linkedTodoId);
+      if (todo?.category === 'LeetCode') {
+        if (window.confirm(`Also log "${todo.text}" as a LeetCode problem?`)) {
+          navigate('/leetcode', { state: { prefill: { problemName: todo.text, timeSpentMinutes: result.elapsedMinutes } } });
+        }
+      }
     } else if (result.category === 'leetcode') {
       navigate('/leetcode', { state: { prefill: { problemName: result.taskName, timeSpentMinutes: result.elapsedMinutes } } });
     } else if (result.semId && result.courseId) {
