@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTimer } from '../context/TimerContext';
 import { useTodos } from '../context/TodosContext';
 import { useCollege } from '../hooks/useCollege';
+import { useLeetCodeLookup } from '../hooks/useLeetCodeLookup';
+import { DIFFICULTY_COLORS } from '../utils/leetcodeConstants';
 
 const inputCls = `w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600
   bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm
@@ -10,8 +12,94 @@ const inputCls = `w-full px-3 py-2 rounded-lg border border-slate-300 dark:borde
 
 const labelCls = 'block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide';
 
+function LeetCodeInput({ onReady }) {
+  const { lookupByNumber, searchByName } = useLeetCodeLookup();
+  const [input, setInput] = useState('');
+  const [matched, setMatched] = useState(null);
+  const [results, setResults] = useState([]);
+  const [showDrop, setShowDrop] = useState(false);
+  const dropRef = useRef(null);
+
+  // Smart debounce: pure digits → number lookup, text → name search
+  useEffect(() => {
+    const val = input.trim();
+    if (!val) { setMatched(null); setResults([]); setShowDrop(false); onReady(null); return; }
+
+    const isNum = /^\d+$/.test(val);
+    const delay = isNum ? 300 : 250;
+
+    const id = setTimeout(() => {
+      if (isNum) {
+        const m = lookupByNumber(val);
+        setMatched(m || null);
+        setResults([]);
+        setShowDrop(false);
+        onReady(m ? m.title : val); // fall back to typed text if not found
+      } else {
+        const res = searchByName(val);
+        setResults(res);
+        setShowDrop(res.length > 0);
+        setMatched(null);
+        onReady(val); // let user type name directly
+      }
+    }, delay);
+    return () => clearTimeout(id);
+  }, [input, lookupByNumber, searchByName, onReady]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const h = (e) => { if (dropRef.current && !dropRef.current.contains(e.target)) setShowDrop(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const pick = (r) => {
+    setInput(`${r.num} – ${r.title}`);
+    setMatched(r);
+    setResults([]);
+    setShowDrop(false);
+    onReady(r.title);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className={labelCls}>Problem # or Name</label>
+      <div className="relative" ref={dropRef}>
+        <input
+          className={inputCls}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="49  or  Group Anagram…"
+          autoComplete="off"
+        />
+        {showDrop && (
+          <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl max-h-44 overflow-y-auto">
+            {results.map(r => (
+              <button key={r.num} type="button" onMouseDown={() => pick(r)}
+                className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-b border-slate-100 dark:border-slate-700 last:border-0">
+                <span className="font-medium text-slate-900 dark:text-white">#{r.num} {r.title}</span>
+                <span className={`ml-1.5 font-semibold px-1 py-0.5 rounded text-[10px] ${DIFFICULTY_COLORS[r.difficulty] || ''}`}>
+                  {r.difficulty}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Match badge */}
+      {matched && (
+        <p className={`text-xs font-medium px-2 py-1 rounded-lg ${DIFFICULTY_COLORS[matched.difficulty] || 'text-slate-500'} bg-opacity-20`}>
+          ✓ #{matched.num} · {matched.title} · {matched.difficulty}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function IdleForm({ timer, collegeData }) {
   const [category, setCategory] = useState(timer.state.category === 'todo' ? 'leetcode' : timer.state.category);
+  const [lcTaskName, setLcTaskName] = useState(''); // resolved from LeetCodeInput
   const [taskName, setTaskName] = useState(timer.state.taskName);
   const [semId, setSemId] = useState(timer.state.semId || '');
   const [courseId, setCourseId] = useState(timer.state.courseId || '');
@@ -20,13 +108,20 @@ function IdleForm({ timer, collegeData }) {
   const courses = semesters.find(s => s.id === semId)?.courses || [];
 
   const handleStart = () => {
-    if (!taskName.trim()) return;
-    timer.start({ category, taskName: taskName.trim(), semId: semId || null, courseId: courseId || null, linkedTodoId: null });
+    if (category === 'leetcode') {
+      if (!lcTaskName?.trim()) return;
+      timer.start({ category, taskName: lcTaskName.trim(), semId: null, courseId: null, linkedTodoId: null });
+    } else {
+      if (!taskName.trim()) return;
+      timer.start({ category, taskName: taskName.trim(), semId: semId || null, courseId: courseId || null, linkedTodoId: null });
+    }
   };
+
+  const canStart = category === 'leetcode' ? !!lcTaskName?.trim() : !!taskName.trim();
 
   return (
     <div className="space-y-3">
-      {/* Category */}
+      {/* Category toggle */}
       <div>
         <label className={labelCls}>Category</label>
         <div className="flex rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600">
@@ -43,7 +138,12 @@ function IdleForm({ timer, collegeData }) {
         </div>
       </div>
 
-      {/* College selectors */}
+      {/* LeetCode: smart number/name input */}
+      {category === 'leetcode' && (
+        <LeetCodeInput onReady={setLcTaskName} />
+      )}
+
+      {/* College: semester/course selectors + entry name */}
       {category === 'college' && (
         <>
           <div>
@@ -62,18 +162,16 @@ function IdleForm({ timer, collegeData }) {
               </select>
             </div>
           )}
+          <div>
+            <label className={labelCls}>Entry Name</label>
+            <input className={inputCls} value={taskName} onChange={e => setTaskName(e.target.value)}
+              placeholder="e.g. Assignment 3"
+              onKeyDown={e => e.key === 'Enter' && handleStart()} />
+          </div>
         </>
       )}
 
-      {/* Task name */}
-      <div>
-        <label className={labelCls}>{category === 'leetcode' ? 'Problem Name' : 'Entry Name'}</label>
-        <input className={inputCls} value={taskName} onChange={e => setTaskName(e.target.value)}
-          placeholder={category === 'leetcode' ? 'e.g. Two Sum' : 'e.g. Assignment 3'}
-          onKeyDown={e => e.key === 'Enter' && handleStart()} />
-      </div>
-
-      <button onClick={handleStart} disabled={!taskName.trim()}
+      <button onClick={handleStart} disabled={!canStart}
         className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-medium transition-colors">
         Start Timer
       </button>
