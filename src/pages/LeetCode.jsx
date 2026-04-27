@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useLeetCode } from '../hooks/useLeetCode';
 import AddProblemForm from '../components/leetcode/AddProblemForm';
 import ProblemList from '../components/leetcode/ProblemList';
@@ -7,6 +8,10 @@ import LeetCodeStats from '../components/leetcode/LeetCodeStats';
 export default function LeetCode() {
   const { entries, addEntry, updateEntry, deleteEntry } = useLeetCode();
   const [editEntry, setEditEntry] = useState(null);
+  const location = useLocation();
+
+  // Prefill from timer stop — consumed once on mount via location state
+  const prefill = location.state?.prefill ?? null;
 
   const handleSubmit = (data) => {
     if (editEntry) {
@@ -28,10 +33,18 @@ export default function LeetCode() {
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Log and review your DSA practice.</p>
       </div>
 
+      {prefill && !editEntry && (
+        <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-sm text-indigo-700 dark:text-indigo-300">
+          <span>⏱️</span>
+          <span>Timer stopped — form pre-filled with <strong>{prefill.problemName}</strong> ({prefill.timeSpentMinutes}m). Fill in the details and save.</span>
+        </div>
+      )}
+
       <AddProblemForm
         onSubmit={handleSubmit}
         editEntry={editEntry}
         onCancelEdit={() => setEditEntry(null)}
+        prefill={prefill}
       />
 
       <LeetCodeStats entries={entries} />

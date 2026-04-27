@@ -14,9 +14,11 @@ const EMPTY = {
   date: new Date().toISOString().slice(0, 10),
 };
 
-export default function AddProblemForm({ onSubmit, editEntry, onCancelEdit }) {
-  const [form, setForm] = useState(EMPTY);
-  const [open, setOpen] = useState(false);
+export default function AddProblemForm({ onSubmit, editEntry, onCancelEdit, prefill }) {
+  const [form, setForm] = useState(() =>
+    prefill ? { ...EMPTY, problemName: prefill.problemName || '', timeSpentMinutes: prefill.timeSpentMinutes || '' } : EMPTY
+  );
+  const [open, setOpen] = useState(!!prefill);
 
   useEffect(() => {
     if (editEntry) {

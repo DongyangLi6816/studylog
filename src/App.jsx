@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import LeetCode from './pages/LeetCode';
 import College from './pages/College';
 import Settings from './pages/Settings';
+import FloatingTimer from './components/FloatingTimer';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
+        <FloatingTimer />
       </BrowserRouter>
     </ThemeProvider>
   );
