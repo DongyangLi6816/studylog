@@ -27,6 +27,7 @@ export default function LeetCode() {
       setEditEntry(null);
     } else {
       addEntry(data);
+      setPrefill(null);
       triggerCelebration(1);
     }
   };

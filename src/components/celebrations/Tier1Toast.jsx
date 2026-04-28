@@ -18,14 +18,14 @@ export default function Tier1Toast({ message, onDismiss }) {
   };
 
   useEffect(() => {
-    const t1 = setTimeout(() => setLeaving(true), 2500);
-    const t2 = setTimeout(safeDismiss, 3000);
+    const t1 = setTimeout(() => setLeaving(true), 2200);
+    const t2 = setTimeout(safeDismiss, 2900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClick = () => {
     setLeaving(true);
-    setTimeout(safeDismiss, 300);
+    setTimeout(safeDismiss, 600);
   };
 
   const colors = theme === 'dark' ? DARK_COLORS : LIGHT_COLORS;
@@ -53,10 +53,10 @@ export default function Tier1Toast({ message, onDismiss }) {
         onClick={handleClick}
         style={{
           animation: leaving ? undefined : 'toast-in 200ms ease-out both',
-          opacity: leaving ? 0 : undefined,
-          transition: leaving ? 'opacity 300ms ease-out' : undefined,
+          opacity: leaving ? 0 : 1,
+          transform: leaving ? 'translateX(-50%) translateY(-10px)' : 'translateX(-50%)',
+          transition: 'opacity 600ms ease-in, transform 600ms ease-in',
           left: '50%',
-          transform: 'translateX(-50%)',
         }}
         className="fixed top-16 z-[9999] flex items-center gap-2.5 px-4 py-2.5 rounded-xl
           bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm

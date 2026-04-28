@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { DIFFICULTIES, STATUSES, DIFFICULTY_COLORS } from '../../utils/leetcodeConstants';
 import { useLeetCodeLookup } from '../../hooks/useLeetCodeLookup';
 import TagSelector from './TagSelector';
@@ -110,6 +110,15 @@ export default function AddProblemForm({ onSubmit, editEntry, onCancelEdit, pref
   const dropdownRef = useRef(null);
   const numRef = useRef(null);
 
+  const selectResult = useCallback((result) => {
+    setMatched(result);
+    setNumInput(result.num);
+    setNameSearch('');
+    setSearchResults([]);
+    setShowDropdown(false);
+    setExtraTopics([]);
+  }, []);
+
   // Open and seed from prefill (timer stopped → navigate to LeetCode page)
   useEffect(() => {
     if (prefill) {
@@ -150,7 +159,7 @@ export default function AddProblemForm({ onSubmit, editEntry, onCancelEdit, pref
     return () => clearTimeout(id);
   }, [numInput, lookupByNumber]);
 
-  // Name search debounce
+  // Name search debounce — auto-selects on exact title match when a timer prefill is active
   useEffect(() => {
     if (!nameSearch || nameSearch.length < 2) {
       setSearchResults([]);
@@ -159,11 +168,17 @@ export default function AddProblemForm({ onSubmit, editEntry, onCancelEdit, pref
     }
     const id = setTimeout(() => {
       const results = searchByName(nameSearch);
+      if (prefill?.problemName && results.length > 0) {
+        const hit =
+          results.find(r => r.title.toLowerCase() === nameSearch.toLowerCase()) ??
+          (results.length === 1 ? results[0] : null);
+        if (hit) { selectResult(hit); return; }
+      }
       setSearchResults(results);
       setShowDropdown(results.length > 0);
     }, 250);
     return () => clearTimeout(id);
-  }, [nameSearch, searchByName]);
+  }, [nameSearch, searchByName, prefill, selectResult]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -175,15 +190,6 @@ export default function AddProblemForm({ onSubmit, editEntry, onCancelEdit, pref
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  const selectResult = (result) => {
-    setMatched(result);
-    setNumInput(result.num);
-    setNameSearch('');
-    setSearchResults([]);
-    setShowDropdown(false);
-    setExtraTopics([]);
-  };
 
   const switchToManual = () => {
     if (matched) {
