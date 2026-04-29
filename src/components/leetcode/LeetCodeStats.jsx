@@ -55,10 +55,10 @@ export default function LeetCodeStats({ entries }) {
     <div className="mb-8 space-y-4">
       {/* Status cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Total Logged" value={stats.total} />
+        <StatCard label="Total Logged" value={stats.total} sub={`${totalHours}h total`} />
         <StatCard label="Solved" value={stats.byStatus.Solved} />
         <StatCard label="Attempted" value={stats.byStatus.Attempted} />
-        <StatCard label="Revisit" value={stats.byStatus.Revisit} sub={`${totalHours}h total`} />
+        <StatCard label="Revisit" value={stats.byStatus.Revisit} />
       </div>
 
       {/* Difficulty & Topic breakdown */}
