@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  theme        String   @default("dark")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  leetcodeEntries LeetcodeEntry[]
+  semesters       Semester[]
+  todos           Todo[]
+}
+
+model LeetcodeEntry {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemName      String
+  problemNumber    Int?
+  difficulty       String   @default("Medium")
+  status           String   @default("Solved")
+  tags             Json     @default("[]")
+  timeSpentMinutes Int      @default(0)
+  notes            String   @default("")
+  url              String   @default("")
+  date             String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, date])
+}
+
+model Semester {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  courses   Course[]
+
+  @@index([userId])
+}
+
+model Course {
+  id          String        @id @default(uuid())
+  semesterId  String
+  semester    Semester      @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  code        String        @default("")
+  name        String
+  creditHours Int?
+  position    Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  entries     CourseEntry[]
+
+  @@index([semesterId])
+}
+
+model CourseEntry {
+  id               String   @id @default(uuid())
+  courseId         String
+  course           Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name             String   @default("")
+  type             String   @default("Assignment")
+  grade            String   @default("")
+  date             String
+  timeSpentMinutes Int      @default(0)
+  notes            String   @default("")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([courseId, date])
+}
+
+model Todo {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  category         String    @default("General")
+  completed        Boolean   @default(false)
+  completedAt      DateTime?
+  timeSpentSeconds Int       @default(0)
+  crossLogged      Boolean   @default(false)
+  timeSessions     Json      @default("[]")
+  scheduledDate    String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId, scheduledDate])
+}

@@ -1,121 +1,128 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { v4 as uuid } from 'uuid';
-import { localDateString } from '../utils/dateUtils';
+import { createContext, useContext, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '../lib/api';
 
-const STORAGE_KEY = 'studylog_college';
+const QUERY_KEY = ['college'];
 const EMPTY = { semesters: [] };
-
-function load() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || EMPTY; }
-  catch { return EMPTY; }
-}
-function save(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
 const Ctx = createContext(null);
 
 export function CollegeProvider({ children }) {
-  const [data, setData] = useState(load);
+  const qc = useQueryClient();
 
-  const mutate = useCallback((fn) => {
-    setData(prev => { const next = fn(prev); save(next); return next; });
-  }, []);
+  const { data = EMPTY } = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: () => apiFetch('/college'),
+  });
 
-  const addSemester = useCallback((name) => {
-    const sem = { id: uuid(), name, courses: [] };
-    mutate(d => ({ ...d, semesters: [...d.semesters, sem] }));
-  }, [mutate]);
+  const invalidate = useCallback(
+    () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+    [qc],
+  );
 
-  const updateSemester = useCallback((semId, name) => {
-    mutate(d => ({ ...d, semesters: d.semesters.map(s => s.id === semId ? { ...s, name } : s) }));
-  }, [mutate]);
+  // ── semesters ──────────────────────────────────────────────────────────────
 
-  const deleteSemester = useCallback((semId) => {
-    mutate(d => ({ ...d, semesters: d.semesters.filter(s => s.id !== semId) }));
-  }, [mutate]);
+  const addSemester = useCallback(
+    (name) =>
+      apiFetch('/college/semesters', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      }).then(invalidate),
+    [invalidate],
+  );
 
-  const addCourse = useCallback((semId, courseData) => {
-    const course = { id: uuid(), creditHours: null, ...courseData, entries: [] };
-    mutate(d => ({
-      ...d,
-      semesters: d.semesters.map(s =>
-        s.id === semId ? { ...s, courses: [...s.courses, course] } : s),
-    }));
-  }, [mutate]);
+  const updateSemester = useCallback(
+    (semId, name) =>
+      apiFetch(`/college/semesters/${semId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
+      }).then(invalidate),
+    [invalidate],
+  );
 
-  const updateCourse = useCallback((semId, courseId, courseData) => {
-    mutate(d => ({
-      ...d,
-      semesters: d.semesters.map(s =>
-        s.id === semId
-          ? { ...s, courses: s.courses.map(c => c.id === courseId ? { ...c, ...courseData } : c) }
-          : s),
-    }));
-  }, [mutate]);
+  const deleteSemester = useCallback(
+    (semId) =>
+      apiFetch(`/college/semesters/${semId}`, { method: 'DELETE' }).then(invalidate),
+    [invalidate],
+  );
 
-  const deleteCourse = useCallback((semId, courseId) => {
-    mutate(d => ({
-      ...d,
-      semesters: d.semesters.map(s =>
-        s.id === semId ? { ...s, courses: s.courses.filter(c => c.id !== courseId) } : s),
-    }));
-  }, [mutate]);
+  // ── courses ────────────────────────────────────────────────────────────────
 
-  const addEntry = useCallback((semId, courseId, entryData) => {
-    const entry = {
-      id: uuid(), createdAt: new Date().toISOString(),
-      name: '', type: 'Assignment', grade: '',
-      date: localDateString(),
-      timeSpentMinutes: 0, notes: '',
-      ...entryData,
-    };
-    mutate(d => ({
-      ...d,
-      semesters: d.semesters.map(s =>
-        s.id === semId ? {
-          ...s,
-          courses: s.courses.map(c =>
-            c.id === courseId ? { ...c, entries: [...c.entries, entry] } : c),
-        } : s),
-    }));
-  }, [mutate]);
+  const addCourse = useCallback(
+    (semId, courseData) =>
+      apiFetch(`/college/semesters/${semId}/courses`, {
+        method: 'POST',
+        body: JSON.stringify(courseData),
+      }).then(invalidate),
+    [invalidate],
+  );
 
-  const updateEntry = useCallback((semId, courseId, entryId, entryData) => {
-    mutate(d => ({
-      ...d,
-      semesters: d.semesters.map(s =>
-        s.id === semId ? {
-          ...s,
-          courses: s.courses.map(c =>
-            c.id === courseId ? {
-              ...c,
-              entries: c.entries.map(e => e.id === entryId ? { ...e, ...entryData } : e),
-            } : c),
-        } : s),
-    }));
-  }, [mutate]);
+  const updateCourse = useCallback(
+    (_semId, courseId, courseData) =>
+      apiFetch(`/college/courses/${courseId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(courseData),
+      }).then(invalidate),
+    [invalidate],
+  );
 
-  const deleteEntry = useCallback((semId, courseId, entryId) => {
-    mutate(d => ({
-      ...d,
-      semesters: d.semesters.map(s =>
-        s.id === semId ? {
-          ...s,
-          courses: s.courses.map(c =>
-            c.id === courseId ? { ...c, entries: c.entries.filter(e => e.id !== entryId) } : c),
-        } : s),
-    }));
-  }, [mutate]);
+  const deleteCourse = useCallback(
+    (_semId, courseId) =>
+      apiFetch(`/college/courses/${courseId}`, { method: 'DELETE' }).then(invalidate),
+    [invalidate],
+  );
 
-  const bulkLoad = useCallback((newData) => { save(newData); setData(newData); }, []);
+  // ── entries ────────────────────────────────────────────────────────────────
+
+  const addEntry = useCallback(
+    (_semId, courseId, entryData) =>
+      apiFetch(`/college/courses/${courseId}/entries`, {
+        method: 'POST',
+        body: JSON.stringify(entryData),
+      }).then(invalidate),
+    [invalidate],
+  );
+
+  const updateEntry = useCallback(
+    (_semId, _courseId, entryId, entryData) =>
+      apiFetch(`/college/entries/${entryId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(entryData),
+      }).then(invalidate),
+    [invalidate],
+  );
+
+  const deleteEntry = useCallback(
+    (_semId, _courseId, entryId) =>
+      apiFetch(`/college/entries/${entryId}`, { method: 'DELETE' }).then(invalidate),
+    [invalidate],
+  );
+
+  const bulkLoad = useCallback(
+    (newData) =>
+      apiFetch('/import', {
+        method: 'POST',
+        body: JSON.stringify({ studylog_college: newData }),
+      }).then(invalidate),
+    [invalidate],
+  );
 
   return (
-    <Ctx.Provider value={{
-      data,
-      addSemester, updateSemester, deleteSemester,
-      addCourse, updateCourse, deleteCourse,
-      addEntry, updateEntry, deleteEntry,
-      bulkLoad,
-    }}>
+    <Ctx.Provider
+      value={{
+        data,
+        addSemester,
+        updateSemester,
+        deleteSemester,
+        addCourse,
+        updateCourse,
+        deleteCourse,
+        addEntry,
+        updateEntry,
+        deleteEntry,
+        bulkLoad,
+      }}
+    >
       {children}
     </Ctx.Provider>
   );

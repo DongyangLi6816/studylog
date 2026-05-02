@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import LocalDataBanner from './LocalDataBanner';
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,6 +28,7 @@ export default function Layout() {
           </span>
         </header>
 
+        <LocalDataBanner />
         <main className="flex-1 p-6">
           <Outlet />
         </main>

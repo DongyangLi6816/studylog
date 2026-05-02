@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { generateSeedData, clearAllData } from '../utils/seedData';
+import { useAuth } from '../context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '../lib/api';
+import { generateSeedData } from '../utils/seedData';
 
 function Section({ title, children }) {
   return (
@@ -25,27 +28,6 @@ function Row({ label, sub, children }) {
   );
 }
 
-// ── Export ──────────────────────────────────────────────────────────────────
-function exportData() {
-  const payload = {
-    version: '1.0',
-    exportedAt: new Date().toISOString(),
-    studylog_theme: localStorage.getItem('studylog_theme') || 'dark',
-    studylog_leetcode: JSON.parse(localStorage.getItem('studylog_leetcode') || '[]'),
-    studylog_college: JSON.parse(localStorage.getItem('studylog_college') || '{"semesters":[]}'),
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `studylog-export-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-// ── Import validation ────────────────────────────────────────────────────────
 function parseImportFile(text) {
   const data = JSON.parse(text);
   if (!Array.isArray(data.studylog_leetcode) && !data.studylog_college?.semesters) {
@@ -59,12 +41,14 @@ function importSummary(data) {
   const sems = data.studylog_college?.semesters || [];
   const courses = sems.flatMap(s => s.courses || []);
   const entries = courses.flatMap(c => c.entries || []);
-  return `${lcCount} LeetCode entries · ${sems.length} semesters · ${courses.length} courses · ${entries.length} college entries`;
+  const todos = data.studylog_todos?.todos?.length ?? 0;
+  return `${lcCount} LeetCode entries · ${sems.length} semesters · ${courses.length} courses · ${entries.length} college entries · ${todos} todos`;
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
 export default function Settings() {
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const qc = useQueryClient();
   const btnBase = 'px-4 py-2 rounded-lg text-sm font-medium transition-colors';
 
   // Seed
@@ -76,18 +60,44 @@ export default function Settings() {
     setTimeout(() => window.location.reload(), 800);
   };
 
-  // Export
+  // Export — compose from three API calls
   const [exportMsg, setExportMsg] = useState('');
-  const handleExport = () => {
-    exportData();
-    setExportMsg('File downloaded.');
-    setTimeout(() => setExportMsg(''), 3000);
+  const handleExport = async () => {
+    try {
+      const [leetcode, college, todosData] = await Promise.all([
+        apiFetch('/leetcode'),
+        apiFetch('/college'),
+        apiFetch('/todos'),
+      ]);
+      const payload = {
+        version: '2.0',
+        exportedAt: new Date().toISOString(),
+        studylog_theme: theme,
+        studylog_leetcode: leetcode,
+        studylog_college: college,
+        studylog_todos: todosData,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `studylog-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setExportMsg('File downloaded.');
+      setTimeout(() => setExportMsg(''), 3000);
+    } catch {
+      setExportMsg('Export failed.');
+    }
   };
 
-  // Import
+  // Import — send to API
   const fileRef = useRef(null);
-  const [importPreview, setImportPreview] = useState(null); // { data, summary }
+  const [importPreview, setImportPreview] = useState(null);
   const [importError, setImportError] = useState('');
+  const [importing, setImporting] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -104,28 +114,52 @@ export default function Settings() {
       }
     };
     reader.readAsText(file);
-    // Reset input so same file can be re-selected
     e.target.value = '';
   };
 
-  const confirmImport = () => {
-    const { data } = importPreview;
-    if (Array.isArray(data.studylog_leetcode))
-      localStorage.setItem('studylog_leetcode', JSON.stringify(data.studylog_leetcode));
-    if (data.studylog_college)
-      localStorage.setItem('studylog_college', JSON.stringify(data.studylog_college));
-    if (data.studylog_theme)
-      localStorage.setItem('studylog_theme', data.studylog_theme);
-    window.location.reload();
+  const confirmImport = async () => {
+    setImporting(true);
+    try {
+      await apiFetch('/import', {
+        method: 'POST',
+        body: JSON.stringify(importPreview.data),
+      });
+      // Invalidate all queries so UI refreshes
+      await qc.invalidateQueries();
+      setImportPreview(null);
+      setImportError('');
+    } catch {
+      setImportError('Import failed. Please try again.');
+    } finally {
+      setImporting(false);
+    }
   };
 
-  // Reset
+  // Reset — delete via import with empty data
   const [resetStep, setResetStep] = useState(0);
-  const handleReset = () => {
+  const [resetting, setResetting] = useState(false);
+  const handleReset = async () => {
     if (resetStep === 0) { setResetStep(1); return; }
-    clearAllData();
-    setResetStep(0);
-    window.location.reload();
+    setResetting(true);
+    try {
+      await apiFetch('/import', {
+        method: 'POST',
+        body: JSON.stringify({ studylog_leetcode: [], studylog_college: { semesters: [] }, studylog_todos: { todos: [] } }),
+      });
+      await qc.invalidateQueries();
+    } catch {
+      // ignore
+    } finally {
+      setResetting(false);
+      setResetStep(0);
+    }
+  };
+
+  // Logout
+  const [loggingOut, setLoggingOut] = useState(false);
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await logout();
   };
 
   return (
@@ -136,6 +170,21 @@ export default function Settings() {
       </div>
 
       <div className="space-y-4">
+        {/* Account */}
+        <Section title="Account">
+          <div className="space-y-4">
+            <Row label="Signed in as" sub={user?.email}>
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className={`${btnBase} border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60`}
+              >
+                {loggingOut ? 'Signing out…' : 'Sign out'}
+              </button>
+            </Row>
+          </div>
+        </Section>
+
         {/* Appearance */}
         <Section title="Appearance">
           <Row label="Theme" sub="Toggle between dark and light interface">
@@ -150,7 +199,6 @@ export default function Settings() {
         {/* Data */}
         <Section title="Data">
           <div className="space-y-5">
-            {/* Export */}
             <Row label="Export Data" sub="Download all your entries as a JSON backup file">
               <button onClick={handleExport}
                 className={`${btnBase} bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600`}>
@@ -161,7 +209,6 @@ export default function Settings() {
 
             <div className="border-t border-slate-100 dark:border-slate-700" />
 
-            {/* Import */}
             <Row label="Import Data" sub="Restore from a previously exported JSON file. This overwrites current data.">
               <button onClick={() => fileRef.current?.click()}
                 className={`${btnBase} bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600`}>
@@ -178,11 +225,11 @@ export default function Settings() {
               <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 space-y-2">
                 <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Ready to import</p>
                 <p className="text-xs text-amber-700 dark:text-amber-400">{importPreview.summary}</p>
-                <p className="text-xs text-amber-600 dark:text-amber-500">This will overwrite all current data and reload the page.</p>
+                <p className="text-xs text-amber-600 dark:text-amber-500">This will overwrite all current data.</p>
                 <div className="flex gap-2 pt-1">
-                  <button onClick={confirmImport}
-                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium transition-colors">
-                    Confirm Import
+                  <button onClick={confirmImport} disabled={importing}
+                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-xs font-medium transition-colors">
+                    {importing ? 'Importing…' : 'Confirm Import'}
                   </button>
                   <button onClick={() => { setImportPreview(null); setImportError(''); }}
                     className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors">
@@ -207,7 +254,7 @@ export default function Settings() {
 
         {/* Danger zone */}
         <Section title="Danger Zone">
-          <Row label="Reset All Data" sub="Permanently delete all LeetCode entries, college data, and timer state">
+          <Row label="Reset All Data" sub="Permanently delete all LeetCode entries, college data, and todos from your account">
             {resetStep === 0 ? (
               <button onClick={handleReset}
                 className={`${btnBase} border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20`}>
@@ -215,13 +262,13 @@ export default function Settings() {
               </button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => setResetStep(0)}
-                  className={`${btnBase} border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700`}>
+                <button onClick={() => setResetStep(0)} disabled={resetting}
+                  className={`${btnBase} border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60`}>
                   Cancel
                 </button>
-                <button onClick={handleReset}
-                  className={`${btnBase} bg-red-600 hover:bg-red-700 text-white`}>
-                  Yes, delete everything
+                <button onClick={handleReset} disabled={resetting}
+                  className={`${btnBase} bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white`}>
+                  {resetting ? 'Deleting…' : 'Yes, delete everything'}
                 </button>
               </div>
             )}
@@ -230,8 +277,8 @@ export default function Settings() {
 
         {/* About */}
         <Section title="About">
-          <p className="text-sm text-slate-600 dark:text-slate-300">StudyLog v1.0 — Your personal study tracker.</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">All data stored locally in your browser. No account required.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">StudyLog v2.0 — Your personal study tracker.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Data synced to your account across devices.</p>
         </Section>
       </div>
     </div>

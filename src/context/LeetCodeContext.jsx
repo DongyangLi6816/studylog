@@ -1,63 +1,68 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { v4 as uuid } from 'uuid';
-import { localDateString } from '../utils/dateUtils';
+import { createContext, useContext, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '../lib/api';
 
-const STORAGE_KEY = 'studylog_leetcode';
-
-function load() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch { return []; }
-}
-function save(entries) { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+const QUERY_KEY = ['leetcode'];
 
 const Ctx = createContext(null);
 
 export function LeetCodeProvider({ children }) {
-  const [entries, setEntries] = useState(load);
+  const qc = useQueryClient();
 
-  const addEntry = useCallback((data) => {
-    const entry = {
-      id: uuid(),
-      createdAt: new Date().toISOString(),
-      problemName: '',
-      problemNumber: null,
-      difficulty: 'Medium',
-      status: 'Solved',
-      topics: [],
-      timeSpentMinutes: 0,
-      notes: '',
-      url: '',
-      date: localDateString(),
-      ...data,
-    };
-    setEntries(prev => {
-      const next = [entry, ...prev];
-      save(next);
-      return next;
-    });
-    return entry;
-  }, []);
+  const { data: entries = [] } = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: () => apiFetch('/leetcode'),
+  });
 
-  const updateEntry = useCallback((id, data) => {
-    setEntries(prev => {
-      const next = prev.map(e => e.id === id ? { ...e, ...data } : e);
-      save(next);
-      return next;
-    });
-  }, []);
+  const addMutation = useMutation({
+    mutationFn: (data) =>
+      apiFetch('/leetcode', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
 
-  const deleteEntry = useCallback((id) => {
-    setEntries(prev => {
-      const next = prev.filter(e => e.id !== id);
-      save(next);
-      return next;
-    });
-  }, []);
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) =>
+      apiFetch(`/leetcode/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
 
-  const bulkLoad = useCallback((newEntries) => {
-    save(newEntries);
-    setEntries(newEntries);
-  }, []);
+  const deleteMutation = useMutation({
+    mutationFn: (id) => apiFetch(`/leetcode/${id}`, { method: 'DELETE' }),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEY });
+      const prev = qc.getQueryData(QUERY_KEY);
+      qc.setQueryData(QUERY_KEY, (old) => (old ?? []).filter((e) => e.id !== id));
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(QUERY_KEY, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+
+  const addEntry = useCallback(
+    (data) => addMutation.mutateAsync(data),
+    [addMutation],
+  );
+
+  const updateEntry = useCallback(
+    (id, data) => updateMutation.mutateAsync({ id, data }),
+    [updateMutation],
+  );
+
+  const deleteEntry = useCallback(
+    (id) => deleteMutation.mutate(id),
+    [deleteMutation],
+  );
+
+  const bulkLoad = useCallback(
+    (newEntries) =>
+      apiFetch('/import', {
+        method: 'POST',
+        body: JSON.stringify({ studylog_leetcode: newEntries }),
+      }).then(() => qc.invalidateQueries({ queryKey: QUERY_KEY })),
+    [qc],
+  );
 
   return (
     <Ctx.Provider value={{ entries, addEntry, updateEntry, deleteEntry, bulkLoad }}>
